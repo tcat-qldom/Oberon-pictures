@@ -1,7 +1,7 @@
 # Oberon-pictures
 
 Grapes.Pict
-![Grapes.png](Grapes.png?raw=true "Grape.Pict")
+![Grapes.png](Grapes.png?raw=true "Grapes.Pict")
 
 Escher.Pict
 ![Escher.png](Escher.png?raw=true "Escher.Pict")
