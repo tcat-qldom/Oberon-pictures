@@ -1,10 +1,10 @@
 # Oberon-pictures
 
-# Grapes.Pict
-![Grapes](Grapes.png?raw=true "Grapes.png")
+Grapes.Pict
+![Grapes.png](Grapes.png?raw=true "Grape.Pict")
 
-# Escher.Pict
-![Escher](Escher.png?raw=true "Escher.png")
+Escher.Pict
+![Escher.png](Escher.png?raw=true "Escher.Pict")
 
 # Excercise 1
     write RLE compression scheme in EBNF form
