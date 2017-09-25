@@ -6,5 +6,5 @@ Grapes.Pict
 Escher.Pict
 ![Escher.png](Escher.png?raw=true "Escher.Pict")
 
-# Excercise 1
+# Exercise 1
     write RLE compression scheme in EBNF form
