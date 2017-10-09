@@ -7,10 +7,7 @@ Escher.Pict
 ![Escher.png](Escher.png?raw=true "Escher.Pict")
 
 # Supported interface
-    PROCEDURE LoadRLE(P: Picture; VAR R: Files.Rider; rv: BOOLEAN);
-    PROCEDURE StoreRLE* (P: Picture; VAR R: Files.Rider; rv: BOOLEAN);
     PROCEDURE New*(w, h, dpt: INTEGER) : Picture;
-    PROCEDURE TestRLE(): Picture;
     PROCEDURE Load*(VAR R: Files.Rider; VAR len: INTEGER) : Picture;
     PROCEDURE Open*(name: ARRAY OF CHAR) : Picture;
     PROCEDURE Show*;
@@ -28,17 +25,29 @@ It decodes rle picture into bitmap, and displays at given coordinates.
 Bitmap is then encoded back to rle and stored to 'Test.Pict'. Showing
 'Test.Pict' should give identical result.
 
-TestRLE, StoreRLE provide some functionality for
+TestRLE, StoreRLE procedures provide some functionality for
 unit test of the module and will be moved to separate module in future.
 
-# EBNF for ETH Picture format
-    File.Pict = ID width height depth CT {run}.
-    ID = $F003$. width=height=depth = short.
-    CT = {R G B}. R=G=B = byte (colour table, 2 entries for depth=1)
-    run = run0 | run1. (run0 = equal byte run, run1 = non-equal byte run)
-    run0 = 257-count byte.
-    run1 = count {byte}.
-    count = byte.
-    byte = 0..255.
-    short = byte byte. (0..32767)
+# ETH Picture format definition
+    LSB = <00> | <01> | ... | <FE> | <FF>.
+    MSB = <00> | <01> | ... | <FE> | <FF>.
+    
+    PictFile = ID Width Height ColorTable { Run } .
+    ID = <03> <F0>.
+    Width = LSB MSB.
+    Height = LSB MSB.
+    ColorTable = Depth { R G B }
+    Depth = LSB MSB
+    R = LSB.
+    G = LSB.
+    B = LSB.
+    Run = Compressed | Uncompressed.
+    Compressed = Negative LSB.
+    Uncompressed = Positive { LSB }.
+    Negative = <80> | <81> | ... | <FF>.
+    Positive = <00> | <01> | ... | <7F>.
 
+- Width, Height and Depth are integer values (MSB * 256 + LSB). 
+- ColorTable has 2^Depth RGB entries.
+- Negative: Copy (256-Negative) times the LSB of RLE to the screen.
+- Positive: Transfer (Positive+1) bytes in the file 1:1 to the screen.
