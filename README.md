@@ -21,10 +21,9 @@ Pictures module currently has only a minimal interface, to show, load, and store
 
 It decodes rle picture into bitmap, and displays at given coordinates.
 
-RLETest module provide some functionality for testing of the rle encoding.
-To test RLE use the command:
+RLETest module provide some functionality for testing of the rle encoding. To test RLE use the command:
 
-   RLETest.Run
+    RLETest.Run
 
 Which will first set picture's bitmap to run of bytes, then it reports the same run rle encoded.
 
