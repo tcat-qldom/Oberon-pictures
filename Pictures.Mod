@@ -1,4 +1,4 @@
-MODULE Pictures; (*TK 8.10.2017*)
+MODULE Pictures; (*TK 10.10.2017*)
   IMPORT SYSTEM, Files, Display, Bitmaps, Texts, Oberon;
 
   TYPE
@@ -52,75 +52,71 @@ MODULE Pictures; (*TK 8.10.2017*)
 
   (* load run length RLE1 encoded picture *)
   PROCEDURE LoadRLE(P: Picture; VAR R: Files.Rider; rv: BOOLEAN);
-	VAR bt: BYTE; x, y, k, a, w, h, bw: INTEGER;
+	VAR bt: BYTE; x, y, rl, a, w, h, bw: INTEGER;
   BEGIN 
     w := P.width; h := P.height;
     bw := (w+31) DIV 32 * 4;   (* number of bytes on bitmap line, word aligned *)
-    a := P.base + P.size - bw;
+    a := P.base + P.size - bw;   (* start at bottom bitmap line and move up *)
 
     y := h; REPEAT
       x := 0; REPEAT
-        Files.ReadByte(R, bt); k := bt;
-        IF k < 128 THEN          (* end of RLE run *)
-          REPEAT                     (* copy `k' bytes until next run *)
+        Files.ReadByte(R, bt); rl := bt; (* run lenght *)
+        IF rl < 128 THEN          (*  un-compressed run *)
+          REPEAT                     (* copy `rl' consequtive bytes  *)
             Files.ReadByte(R, bt);
             (*a := P.base + y*bw + (x DIV 32)*4;*)
             Bitmaps.PutPix(a, x, bt, P.depth);
-            DEC(k)
-          UNTIL k < 0
-        ELSIF k >= 128 THEN  (* start of RLE run *)
-          k := 257 - k;
+            DEC(rl)
+          UNTIL rl < 0
+        ELSIF rl >= 128 THEN  (* compressed run *)
+          rl := 257 - rl;
           Files.ReadByte(R, bt);
-          REPEAT                     (* duplicate byte `257-k' times *)
+          REPEAT                     (* duplicate byte `257-rl' times *)
             (*a := P.base + y*bw + (x DIV 32)*4;*)
             Bitmaps.PutPix(a, x, bt, P.depth);
-            DEC(k)
-          UNTIL k < 1
+            DEC(rl)
+          UNTIL rl < 1
         END;
       UNTIL x = w; DEC(y); a := P.base + y*bw - bw
     UNTIL y = 0;
-
   END LoadRLE;
 
   (* store run length RLE1 encoded picture *)
-  PROCEDURE StoreRLE* (P: Picture; VAR R: Files.Rider; rv: BOOLEAN);
+  PROCEDURE Store*(P: Picture; VAR R: Files.Rider; VAR len: INTEGER);
   VAR j, a, b, h, w, d: INTEGER; bt :BYTE; bw, bw0, pos, adr: INTEGER; 
-         buf: ARRAY 129 OF BYTE; help: BOOLEAN;
-         f: Files.File; r: Files.Rider;
+         buf: ARRAY 129 OF BYTE; cmpr: BOOLEAN;
   BEGIN
-    f := Files.New("Test.Pict");
-    Files.Set(r, f, 0);
-	
     w := P.width; h := P.height; d := P.depth;
-    bw := (w+31) DIV 32 * 4;   (* number of bytes on bitmap line, word aligned *)
-    bw0 := (w+7) DIV 8;           (* number of bytes on bitmap line *)
-    adr := P.base + P.size - bw;
+    bw := (w+31) DIV 32 * 4;     (* number of bytes on bitmap line, word aligned *)
+    bw0 := (w+7) DIV 8;             (* number of bytes on bitmap line *)
+    adr := P.base + P.size - bw;  (* start at bottom bitmap line and move up *)
 
-    WriteShort(r, 0F003H);
-    WriteShort(r, w); WriteShort(r, h); WriteShort(r, d); StoreCT(P.ct, r, d);
+    pos := Files.Pos(R);
+    WriteShort(R, 0F003H);
+    WriteShort(R, w); WriteShort(R, h); WriteShort(R, d); StoreCT(P.ct, R, d);
 	
     REPEAT
       j := 1; buf[0] := 0; (* run len, 0,1,.. | -1,-2,.. *)
       a := 0; b := a + 1;  (* b-a bytes in run *)
       Bitmaps.GetPix(adr, buf[j], d);
       WHILE b < bw0 DO
-        Bitmaps.GetPix(adr, bt, d); help := (buf[j] = bt);
-        IF ((b - a) < 127) & ((buf[0] = 0) OR help & (j = 1) OR ~help & (j > 1)) THEN (* same run *)
+        Bitmaps.GetPix(adr, bt, d); cmpr := (buf[j] = bt); (* compressed run ? *)
+        IF ((b - a) < 127) & ((buf[0] = 0) OR cmpr & (j = 1) OR ~cmpr & (j > 1)) THEN (* same run *)
           IF bt # buf[j] THEN INC(buf[0]); INC(j); buf[j] := bt ELSE DEC(buf[0]) END
         ELSE (* new run *)
-          IF (help) & (b - a # 127) THEN DEC(buf[0]); Files.WriteBytes(r, buf, j); buf[0] := -1
-          ELSE Files.WriteBytes(r, buf, j + 1); buf[0] := 0 END;
+          IF (cmpr) & (b - a # 127) THEN DEC(buf[0]); Files.WriteBytes(R, buf, j); buf[0] := -1
+          ELSE Files.WriteBytes(R, buf, j + 1); buf[0] := 0 END;
           j := 1; buf[j] := bt; a := b
         END;
         INC(b)
       END;
-      Files.WriteBytes(r, buf, j + 1);
+      Files.WriteBytes(R, buf, j + 1);
       adr := adr - bw0 - bw; (* adr := P.base + h*bw - bw; *)
       DEC(h)
     UNTIL h = 0;
 
-    Files.Register(f)
-  END StoreRLE;
+    len := Files.Pos(R) - pos
+  END Store;
 
   PROCEDURE New*(w, h, dpt: INTEGER) : Picture;
     VAR p: Picture; b: Bitmaps.Bitmap;
@@ -132,25 +128,6 @@ MODULE Pictures; (*TK 8.10.2017*)
       END
    END  
   RETURN p END New;
-
-  (* sets test byte run 0  0  0  0  1  0  0  2  3  4  0  1 *)
-  PROCEDURE TestRLE(): Picture;
-    VAR p: Picture; bt: BYTE; w, h, dpt, a: INTEGER;
-  BEGIN 
-    w := 12*8; h := 1; dpt := 1;
-    p := New(w, h, dpt);
-    IF p # NIL THEN
-      a := p.base;
-      bt := 0; SYSTEM.PUT(a, bt); INC(a); SYSTEM.PUT(a, bt); INC(a); SYSTEM.PUT(a, bt); INC(a); SYSTEM.PUT(a, bt); INC(a);
-      bt := 1; SYSTEM.PUT(a, bt); INC(a);
-      bt := 0; SYSTEM.PUT(a, bt); INC(a); SYSTEM.PUT(a, bt); INC(a);
-      bt := 2; SYSTEM.PUT(a, bt); INC(a);
-      bt := 3; SYSTEM.PUT(a, bt); INC(a);
-      bt := 4; SYSTEM.PUT(a, bt); INC(a);
-      bt := 0; SYSTEM.PUT(a, bt); INC(a);
-      bt := 1; SYSTEM.PUT(a, bt);
-    END 
-  RETURN p END TestRLE;
  
   PROCEDURE Load*(VAR R: Files.Rider; VAR len: INTEGER) : Picture;
     VAR p: Picture; w, h, dpt: INTEGER;
@@ -181,7 +158,7 @@ MODULE Pictures; (*TK 8.10.2017*)
   RETURN p END Open;
 
   PROCEDURE Show*;
-	VAR p: Picture; x, y: INTEGER; S: Texts.Scanner; R: Files.Rider;
+	VAR p: Picture; x, y: INTEGER; S: Texts.Scanner;
   BEGIN
     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
     IF S.class = Texts.Name THEN Texts.Scan(S);
@@ -189,14 +166,12 @@ MODULE Pictures; (*TK 8.10.2017*)
         IF S.class = Texts.Int THEN y := S.i END
       END
     END;
-    p := Open(S.s); (* p := TestRLE(); *)
-    IF p # NIL THEN Bitmaps.DisplayBlock(p, 0, 0, p.width, p.height, x, y, Display.replace);
-     StoreRLE(p, R, FALSE)
-    END
+    p := Open(S.s);
+    IF p # NIL THEN Bitmaps.DisplayBlock(p, 0, 0, p.width, p.height, x, y, Display.replace) END
   END Show;
 
 BEGIN Texts.OpenWriter(W)
 END Pictures.
 
-Pictures.Show Grapes.Pict 30 30 ~  Pictures.Show Test.Pict 30 30 ~
+Pictures.Show Grapes.Pict 30 30 ~
 Pictures.Show Escher.Pict 30 30 ~
