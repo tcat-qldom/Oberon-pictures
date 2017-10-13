@@ -26,22 +26,33 @@ MODULE RLETest; (*TK 10.10.2017*)
   BEGIN
     p := SetRun();
     IF p # NIL THEN
-      F := Files.New("Test.Pict"); Files.Set(R, F, 0);
-      
+
       FOR a := p.base TO p.base+12 DO
         SYSTEM.GET(a, bt); Texts.WriteInt(W, bt, 4)
       END; Texts.WriteLn(W);
-
+            
+      F := Files.New("Test.Pict"); Files.Set(R, F, 0);
       Pictures.Store(p, R, len);
       Files.Register(F); Files.Set(R, F, 14);
 
-      FOR a := 1 TO len-12 DO
+      FOR a := 1 TO len-14 DO
         Files.ReadByte(R, bt); Texts.WriteInt(W, bt, 4)
       END; Texts.WriteLn(W);
 
     END;
     Texts.Append(Oberon.Log, W.buf)
   END Run;
+
+  PROCEDURE Pict*;
+	VAR p: Pictures.Picture; F: Files.File; R: Files.Rider; len: INTEGER;
+  BEGIN
+    p := Pictures.Open("Grapes.Pict");
+    IF p# NIL THEN
+      F := Files.New("Test.Pict"); Files.Set(R, F, 0);
+      Pictures.Store(p, R, len);
+      Files.Register(F)
+    END
+  END Pict;
 
 BEGIN Texts.OpenWriter(W)
 END RLETest.

@@ -102,7 +102,7 @@ MODULE Pictures; (*TK 10.10.2017*)
       WHILE b < bw0 DO
         Bitmaps.GetPix(adr, bt, d); cmpr := (buf[j] = bt); (* compressed run ? *)
         IF ((b - a) < 127) & ((buf[0] = 0) OR cmpr & (j = 1) OR ~cmpr & (j > 1)) THEN (* same run *)
-          IF bt # buf[j] THEN INC(buf[0]); INC(j); buf[j] := bt ELSE DEC(buf[0]) END
+          IF ~cmpr THEN INC(buf[0]); INC(j); buf[j] := bt ELSE DEC(buf[0]) END
         ELSE (* new run *)
           IF (cmpr) & (b - a # 127) THEN DEC(buf[0]); Files.WriteBytes(R, buf, j); buf[0] := -1
           ELSE Files.WriteBytes(R, buf, j + 1); buf[0] := 0 END;
@@ -115,7 +115,7 @@ MODULE Pictures; (*TK 10.10.2017*)
       DEC(h)
     UNTIL h = 0;
 
-    len := Files.Pos(R) - pos
+    len := Files.Pos(R) - pos +1
   END Store;
 
   PROCEDURE New*(w, h, dpt: INTEGER) : Picture;

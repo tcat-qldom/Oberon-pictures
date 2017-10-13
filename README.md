@@ -21,11 +21,12 @@ Pictures module currently has only a minimal interface, to show, load, and store
 
 It decodes rle picture into bitmap, and displays at given coordinates.
 
-RLETest module provide some functionality for testing of the rle encoding. To test RLE use the command:
+RLETest module provide some functionality for testing of the rle encoding. To test RLE use the commands:
 
     RLETest.Run
+    RLETest.Pict
 
-Which will first set picture's bitmap to run of bytes, then it reports the same run rle encoded.
+Former will first set picture's bitmap to a run of bytes, then it reports the same run rle encoded, the latter will decode 'Grapes.Pict' and encode it back to 'Test.Pict' producing identical file.
 
 # ETH Picture format definition
     LSB = <00> | <01> | ... | <FE> | <FF>.
